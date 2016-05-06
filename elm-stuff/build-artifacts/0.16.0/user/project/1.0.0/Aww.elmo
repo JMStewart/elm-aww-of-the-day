@@ -1,0 +1,108 @@
+Elm.Aww = Elm.Aww || {};
+Elm.Aww.make = function (_elm) {
+   "use strict";
+   _elm.Aww = _elm.Aww || {};
+   if (_elm.Aww.values) return _elm.Aww.values;
+   var _U = Elm.Native.Utils.make(_elm),
+   $Basics = Elm.Basics.make(_elm),
+   $Debug = Elm.Debug.make(_elm),
+   $Html = Elm.Html.make(_elm),
+   $Html$Attributes = Elm.Html.Attributes.make(_elm),
+   $Http = Elm.Http.make(_elm),
+   $Json$Decode = Elm.Json.Decode.make(_elm),
+   $List = Elm.List.make(_elm),
+   $Maybe = Elm.Maybe.make(_elm),
+   $Regex = Elm.Regex.make(_elm),
+   $Result = Elm.Result.make(_elm),
+   $Signal = Elm.Signal.make(_elm),
+   $String = Elm.String.make(_elm),
+   $Task = Elm.Task.make(_elm);
+   var _op = {};
+   var result = $Signal.mailbox(_U.list([]));
+   var report = function (str) {    return A2($Signal.send,result.address,str);};
+   var validVideo = function (post) {    return _U.eq(A2($Maybe.withDefault,"",post.post_hint),"rich:video") || A2($String.endsWith,".gifv",post.url);};
+   var hasPreview = function (post) {    return $Basics.not($String.isEmpty(A2($Maybe.withDefault,"",post.preview)));};
+   var validLink = function (post) {    return _U.eq(A2($Maybe.withDefault,"",post.post_hint),"link") && hasPreview(post);};
+   var hasUrl = function (post) {    return $Basics.not($String.isEmpty(post.url));};
+   var validImg = function (post) {    return _U.eq(A2($Maybe.withDefault,"",post.post_hint),"image") && hasUrl(post);};
+   var validPost = function (post) {    return validVideo(post) || (validLink(post) || validImg(post));};
+   var makeHttps = function (url) {    return A4($Regex.replace,$Regex.All,$Regex.regex("^http:"),function (_p0) {    return "https:";},url);};
+   var createSources = function (post) {
+      var source2 = A4($Regex.replace,$Regex.All,$Regex.regex("gifv"),function (_p1) {    return "webm";},makeHttps(post.url));
+      var source1 = A4($Regex.replace,$Regex.All,$Regex.regex("gifv"),function (_p2) {    return "mp4";},makeHttps(post.url));
+      return _U.list([A2($Html.source,_U.list([$Html$Attributes.src(source1)]),_U.list([]))
+                     ,A2($Html.source,_U.list([$Html$Attributes.src(source2)]),_U.list([]))]);
+   };
+   var styles = _U.list([{ctor: "_Tuple2",_0: "width",_1: "100%"},{ctor: "_Tuple2",_0: "float",_1: "left"},{ctor: "_Tuple2",_0: "clear",_1: "both"}]);
+   var buildImg = function (post) {
+      return A2($Html.img,_U.list([$Html$Attributes.style(styles),$Html$Attributes.src(post.url),$Html$Attributes.title(post.title)]),_U.list([]));
+   };
+   var buildLink = function (post) {
+      return A2($Html.img,
+      _U.list([$Html$Attributes.style(styles),$Html$Attributes.src(A2($Maybe.withDefault,"",post.preview)),$Html$Attributes.title(post.title)]),
+      _U.list([]));
+   };
+   var buildVideo = function (post) {
+      return A2($Html.video,
+      _U.list([$Html$Attributes.style(styles),$Html$Attributes.autoplay(true),$Html$Attributes.loop(true),$Html$Attributes.title(post.title)]),
+      createSources(post));
+   };
+   var buildElement = function (post) {
+      var _p3 = post.post_hint;
+      _v0_3: do {
+         if (_p3.ctor === "Just") {
+               switch (_p3._0)
+               {case "rich:video": return buildVideo(post);
+                  case "image": return buildImg(post);
+                  case "link": return buildLink(post);
+                  default: break _v0_3;}
+            } else {
+               break _v0_3;
+            }
+      } while (false);
+      return A2($Html.img,_U.list([]),_U.list([]));
+   };
+   var view = function (posts) {
+      var goodPosts = A2($List.filter,validPost,posts);
+      return A2($Html.div,_U.list([]),A2($List.map,buildElement,A2($List.take,1,goodPosts)));
+   };
+   var main = A2($Signal.map,view,result.signal);
+   var jsonUrl = "https://www.reddit.com/r/aww.json";
+   var initPost = {title: "Help",post_hint: $Maybe.Nothing,url: "",preview: $Maybe.Nothing};
+   var initPosts = _U.list([initPost]);
+   var Post = F4(function (a,b,c,d) {    return {title: a,post_hint: b,url: c,preview: d};});
+   var processPost = A5($Json$Decode.object4,
+   Post,
+   A2($Json$Decode._op[":="],"title",$Json$Decode.string),
+   $Json$Decode.maybe(A2($Json$Decode._op[":="],"post_hint",$Json$Decode.string)),
+   A2($Json$Decode._op[":="],"url",$Json$Decode.string),
+   $Json$Decode.maybe(A2($Json$Decode.at,_U.list(["preview","images","0","source","url"]),$Json$Decode.string)));
+   var getData = A2($Json$Decode._op[":="],"data",processPost);
+   var processJson = A2($Json$Decode.at,_U.list(["data","children"]),$Json$Decode.list(getData));
+   var getJson = Elm.Native.Task.make(_elm).perform(A2($Task.andThen,A2($Http.get,processJson,jsonUrl),report));
+   return _elm.Aww.values = {_op: _op
+                            ,Post: Post
+                            ,initPost: initPost
+                            ,initPosts: initPosts
+                            ,jsonUrl: jsonUrl
+                            ,styles: styles
+                            ,main: main
+                            ,view: view
+                            ,buildElement: buildElement
+                            ,buildImg: buildImg
+                            ,buildLink: buildLink
+                            ,buildVideo: buildVideo
+                            ,createSources: createSources
+                            ,makeHttps: makeHttps
+                            ,hasUrl: hasUrl
+                            ,hasPreview: hasPreview
+                            ,validVideo: validVideo
+                            ,validLink: validLink
+                            ,validImg: validImg
+                            ,validPost: validPost
+                            ,processJson: processJson
+                            ,getData: getData
+                            ,processPost: processPost
+                            ,result: result
+                            ,report: report};
+};
